@@ -145,10 +145,20 @@ namespace Szeminarium1
             CheckGlError("Bind VAO");
 
             float[] vertexArray = new float[] {
-                -0.5f, -0.5f, 0.0f,
-                +0.5f, -0.5f, 0.0f,
-                 0.0f, +0.5f, 0.0f,
-                 1f, 1f, 0f
+                 0.0f,  0.1f, 0.0f,
+                -0.6f,  0.4f, 0.0f,
+                 0.0f,  0.6f, 0.0f,
+                 0.6f,  0.4f, 0.0f,
+
+                -0.6f,  0.4f, 0.0f,
+                 0.0f,  0.1f, 0.0f,
+                 0.0f, -0.6f, 0.0f,
+                -0.4f, -0.2f, 0.0f,
+
+                 0.0f,  0.1f, 0.0f,
+                 0.6f,  0.4f, 0.0f,
+                 0.4f, -0.2f, 0.0f,
+                 0.0f, -0.6f, 0.0f
             };
 
             //Tul keves adat a koordinatakban
@@ -161,14 +171,30 @@ namespace Szeminarium1
 
             float[] colorArray = new float[] {
                 1.0f, 0.0f, 0.0f, 1.0f,
-                0.0f, 1.0f, 0.0f, 1.0f,
-                0.0f, 0.0f, 1.0f, 1.0f,
                 1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+                1.0f, 0.0f, 0.0f, 1.0f,
+
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f
             };
 
             uint[] indexArray = new uint[] {
                 0, 1, 2,
-                2, 1, 3
+                0, 2, 3,
+
+                4, 5, 6,
+                4, 6, 7,
+
+                8, 9, 10,
+                8, 10, 11
             };
 
             //Ervenytelen index beirasa az indexArraybe (9es index nem letezik)
