@@ -7,7 +7,7 @@ namespace Szeminarium1_24_02_17_2
 {
     internal static class Program
     {
-        private static CameraDescriptor cameraDescriptor = new();
+        //private static CameraDescriptor cameraDescriptor = new();
 
         //private static CubeArrangementModel cubeArrangementModel = new();
 
@@ -25,16 +25,34 @@ namespace Szeminarium1_24_02_17_2
         private static readonly GlCube[] rubikCubes = new GlCube[CubeCount];
         private static readonly Vector3D<float>[] cubePositions = new Vector3D<float>[CubeCount];
 
+        private static readonly Vector3D<int>[] cubeGridCoords = new Vector3D<int>[CubeCount];
+
         private const string ModelMatrixVariableName = "uModel";
+        private const string SliceRotationMatrixVariableName = "uSliceRotation";
         private const string ViewMatrixVariableName = "uView";
         private const string ProjectionMatrixVariableName = "uProjection";
 
+        private static int modelLoc;
+        private static int sliceLoc;
+        private static int viewLoc;
+        private static int projLoc;
+
+        private static Vector3D<float> cameraPos = new Vector3D<float>(0.0f, 3.0f, 7.0f);
+        private static float cameraYaw = -90.0f;
+        private static float cameraPitch = -20.0f;
+        private static readonly HashSet<Key> pressedKeys = new HashSet<Key>();
+
+        private static float currentSliceAngle = 0.0f;
+        private static float targetSliceAngle = 0.0f;
+        private const float RotationSpeed = 3.5f;
+            
         private static readonly string VertexShaderSource = @"
         #version 330 core
         layout (location = 0) in vec3 vPos;
 		layout (location = 1) in vec4 vCol;
 
         uniform mat4 uModel;
+        uniform mat4 uSliceRotation;
         uniform mat4 uView;
         uniform mat4 uProjection;
 
@@ -43,7 +61,7 @@ namespace Szeminarium1_24_02_17_2
         void main()
         {
 			outCol = vCol;
-            gl_Position = uProjection*uView*uModel*vec4(vPos.x, vPos.y, vPos.z, 1.0);
+            gl_Position = uProjection * uView * uSliceRotation * uModel * vec4(vPos, 1.0);
         }
         ";
 
@@ -64,7 +82,7 @@ namespace Szeminarium1_24_02_17_2
         {
             WindowOptions windowOptions = WindowOptions.Default;
             windowOptions.Title = "2 szeminárium";
-            windowOptions.Size = new Vector2D<int>(500, 500);
+            windowOptions.Size = new Vector2D<int>(800, 800);
 
             // on some systems there is no depth buffer by default, so we need to make sure one is created
             windowOptions.PreferredDepthBufferBits = 24;
@@ -88,6 +106,7 @@ namespace Szeminarium1_24_02_17_2
             foreach (var keyboard in inputContext.Keyboards)
             {
                 keyboard.KeyDown += Keyboard_KeyDown;
+                keyboard.KeyUp += Keyboard_KeyUp;
             }
 
             Gl = window.CreateOpenGL();
@@ -101,10 +120,6 @@ namespace Szeminarium1_24_02_17_2
 
             Gl.Enable(EnableCap.DepthTest);
             Gl.DepthFunc(DepthFunction.Lequal);
-
-            for (int i = 0; i < 18; i++) cameraDescriptor.IncreaseDistance();
-            for (int i = 0; i < 7; i++) cameraDescriptor.IncreaseZYAngle();
-            for (int i = 0; i < 5; i++) cameraDescriptor.IncreaseZXAngle();
         }
 
         private static void LinkProgram()
@@ -120,6 +135,9 @@ namespace Szeminarium1_24_02_17_2
 
             Gl.ShaderSource(fshader, FragmentShaderSource);
             Gl.CompileShader(fshader);
+            Gl.GetShader(fshader, ShaderParameterName.CompileStatus, out int fStatus);
+            if (fStatus != (int)GLEnum.True)
+                throw new Exception("Fragment shader failed: " + Gl.GetShaderInfoLog(fshader));
 
             program = Gl.CreateProgram();
             Gl.AttachShader(program, vshader);
@@ -134,44 +152,74 @@ namespace Szeminarium1_24_02_17_2
             Gl.DetachShader(program, fshader);
             Gl.DeleteShader(vshader);
             Gl.DeleteShader(fshader);
+
+            modelLoc = Gl.GetUniformLocation(program, ModelMatrixVariableName);
+            sliceLoc = Gl.GetUniformLocation(program, SliceRotationMatrixVariableName);
+            viewLoc = Gl.GetUniformLocation(program, ViewMatrixVariableName);
+            projLoc = Gl.GetUniformLocation(program, ProjectionMatrixVariableName);
         }
 
         private static void Keyboard_KeyDown(IKeyboard keyboard, Key key, int arg3)
         {
-            switch (key)
+            pressedKeys.Add(key);
+
+            // B) Feladat
+            if (key == Key.Space)
             {
-                case Key.Left:
-                    cameraDescriptor.DecreaseZYAngle();
-                    break;
-                    ;
-                case Key.Right:
-                    cameraDescriptor.IncreaseZYAngle();
-                    break;
-                case Key.Down:
-                    cameraDescriptor.IncreaseDistance();
-                    break;
-                case Key.Up:
-                    cameraDescriptor.DecreaseDistance();
-                    break;
-                case Key.U:
-                    cameraDescriptor.IncreaseZXAngle();
-                    break;
-                case Key.D:
-                    cameraDescriptor.DecreaseZXAngle();
-                    break;
-                //case Key.Space:
-                //    cubeArrangementModel.AnimationEnabeld = !cubeArrangementModel.AnimationEnabeld;
-                //    break;
+                targetSliceAngle += MathF.PI / 2.0f; // +90
             }
+            else if (key == Key.Backspace)
+            {
+                targetSliceAngle -= MathF.PI / 2.0f; // -90
+            }
+        }
+
+        private static void Keyboard_KeyUp(IKeyboard keyboard, Key key, int arg3)
+        {
+            pressedKeys.Remove(key);
         }
 
         private static void Window_Update(double deltaTime)
         {
-            //Console.WriteLine($"Update after {deltaTime} [s].");
-            // multithreaded
-            // make sure it is threadsafe
-            // NO GL calls
-            //cubeArrangementModel.AdvanceTime(deltaTime);
+            float dt = (float)deltaTime;
+
+            float turnSpeed = 75.0f * dt;
+            if (pressedKeys.Contains(Key.Left)) cameraYaw -= turnSpeed;
+            if (pressedKeys.Contains(Key.Right)) cameraYaw += turnSpeed;
+            if (pressedKeys.Contains(Key.Up)) cameraPitch += turnSpeed;
+            if (pressedKeys.Contains(Key.Down)) cameraPitch -= turnSpeed;
+
+            cameraPitch = Math.Clamp(cameraPitch, -89.0f, 89.0f);
+
+            float yawRad = MathF.PI / 180.0f * cameraYaw;
+            float pitchRad = MathF.PI / 180.0f * cameraPitch;
+
+            Vector3D<float> front;
+            front.X = MathF.Cos(pitchRad) * MathF.Cos(yawRad);
+            front.Y = MathF.Sin(pitchRad);
+            front.Z = MathF.Cos(pitchRad) * MathF.Sin(yawRad);
+            front = Vector3D.Normalize(front);
+
+            Vector3D<float> right = Vector3D.Normalize(Vector3D.Cross(front, Vector3D<float>.UnitY));
+
+            float moveSpeed = 5.0f * dt;
+            if (pressedKeys.Contains(Key.W)) cameraPos += front * moveSpeed;
+            if (pressedKeys.Contains(Key.S)) cameraPos -= front * moveSpeed;
+            if (pressedKeys.Contains(Key.D)) cameraPos += right * moveSpeed;
+            if (pressedKeys.Contains(Key.A)) cameraPos -= right * moveSpeed;
+
+            if (MathF.Abs(targetSliceAngle - currentSliceAngle) > 0.001f)
+            {
+                float step = RotationSpeed * dt;
+                if (currentSliceAngle < targetSliceAngle)
+                {
+                    currentSliceAngle = MathF.Min(currentSliceAngle + step, targetSliceAngle);
+                }
+                else
+                {
+                    currentSliceAngle = MathF.Max(currentSliceAngle - step, targetSliceAngle);
+                }
+            }
         }
 
         private static unsafe void Window_Render(double deltaTime)
@@ -192,42 +240,33 @@ namespace Szeminarium1_24_02_17_2
 
         }
 
-        //private static unsafe void DrawRevolvingCube()
-        //{
-        //    Matrix4X4<float> diamondScale = Matrix4X4.CreateScale(0.25f);
-        //    Matrix4X4<float> rotx = Matrix4X4.CreateRotationX((float)Math.PI / 4f);
-        //    Matrix4X4<float> rotz = Matrix4X4.CreateRotationZ((float)Math.PI / 4f);
-        //    Matrix4X4<float> rotLocY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleOwnRevolution);
-        //    Matrix4X4<float> trans = Matrix4X4.CreateTranslation(1f, 1f, 0f);
-        //    Matrix4X4<float> rotGlobY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleRevolutionOnGlobalY);
-        //    Matrix4X4<float> modelMatrix = diamondScale * rotx * rotz * rotLocY * trans * rotGlobY;
-
-        //    SetModelMatrix(modelMatrix);
-        //    Gl.BindVertexArray(glCubeRotating.Vao);
-        //    Gl.DrawElements(GLEnum.Triangles, glCubeRotating.IndexArrayLength, GLEnum.UnsignedInt, null);
-        //    Gl.BindVertexArray(0);
-        //}
-
-        //private static unsafe void DrawPulsingCenterCube()
-        //{
-        //    var modelMatrixForCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
-        //    SetModelMatrix(modelMatrixForCenterCube);
-        //    Gl.BindVertexArray(glCubeCentered.Vao);
-        //    Gl.DrawElements(GLEnum.Triangles, glCubeCentered.IndexArrayLength, GLEnum.UnsignedInt, null);
-        //    Gl.BindVertexArray(0);
-        //}
-
         private static unsafe void DrawRubikCube()
         {
+            int sliceLoc = Gl.GetUniformLocation(program, SliceRotationMatrixVariableName);
+            if (sliceLoc == -1)
+                throw new Exception($"{SliceRotationMatrixVariableName} uniform not found.");
+
+            Matrix4X4<float> sliceRotMatrix = Matrix4X4.CreateRotationY(currentSliceAngle);
+            Matrix4X4<float> identityMatrix = Matrix4X4<float>.Identity;
+
             for (int i = 0; i < CubeCount; i++)
             {
                 Matrix4X4<float> modelMatrix = Matrix4X4.CreateTranslation(cubePositions[i]);
                 SetModelMatrix(modelMatrix);
 
+                if (cubeGridCoords[i].Y == 1)
+                {
+                    Gl.UniformMatrix4(sliceLoc, 1, false, (float*)&sliceRotMatrix);
+                }
+                else
+                {
+                    Gl.UniformMatrix4(sliceLoc, 1, false, (float*)&identityMatrix);
+                }
+
                 Gl.BindVertexArray(rubikCubes[i].Vao);
                 Gl.DrawElements(GLEnum.Triangles, rubikCubes[i].IndexArrayLength, GLEnum.UnsignedInt, null);
-                Gl.BindVertexArray(0);
             }
+            Gl.BindVertexArray(0);
         }
 
         private static unsafe void SetModelMatrix(Matrix4X4<float> modelMatrix)
@@ -265,6 +304,7 @@ namespace Szeminarium1_24_02_17_2
                     for (int z = -1; z <= 1; z++)
                     {
                         cubePositions[index] = new Vector3D<float>(x * spacing, y * spacing, z * spacing);
+                        cubeGridCoords[index] = new Vector3D<int>(x, y, z);
 
                         float[] fTop = (y == 1) ? colWhite : colInside;
                         float[] fFront = (z == 1) ? colGreen : colInside;
@@ -311,7 +351,16 @@ namespace Szeminarium1_24_02_17_2
 
         private static unsafe void SetViewMatrix()
         {
-            var viewMatrix = Matrix4X4.CreateLookAt(cameraDescriptor.Position, cameraDescriptor.Target, cameraDescriptor.UpVector);
+            float yawRad = MathF.PI / 180.0f * cameraYaw;
+            float pitchRad = MathF.PI / 180.0f * cameraPitch;
+
+            Vector3D<float> front;
+            front.X = MathF.Cos(pitchRad) * MathF.Cos(yawRad);
+            front.Y = MathF.Sin(pitchRad);
+            front.Z = MathF.Cos(pitchRad) * MathF.Sin(yawRad);
+            front = Vector3D.Normalize(front);
+
+            var viewMatrix = Matrix4X4.CreateLookAt(cameraPos, cameraPos + front, Vector3D<float>.UnitY);
             int location = Gl.GetUniformLocation(program, ViewMatrixVariableName);
 
             if (location == -1)
