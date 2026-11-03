@@ -1,0 +1,17 @@
+## Visual Studio és Rider ideiglenes fájlok
+.vs/
+.idea/
+
+## Fordítási kimenetek és köztes fájlok (C# / .NET)
+[Bb]in/
+[Oo]bj/
+
+## Felhasználóspecifikus beállítások és lock fájlok
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Fájlok az operációs rendszertől
+.DS_Store
+Thumbs.db
