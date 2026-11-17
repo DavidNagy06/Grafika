@@ -377,7 +377,7 @@ namespace Szeminarium1_24_02_17_2
 
         private static void RenderImGui()
         {
-            ImGui.Begin("Anyag és Világítás", ImGuiWindowFlags.AlwaysAutoResize);
+            ImGui.Begin("Anyag es Vilagitas", ImGuiWindowFlags.AlwaysAutoResize);
 
             ImGui.Text("Ambient Strength (R, G, B):");
             ImGui.SliderFloat("Ambient R", ref AmbientStrength.X, 0.0f, 1.0f);
@@ -400,14 +400,14 @@ namespace Szeminarium1_24_02_17_2
             ImGui.SliderFloat("Shininess", ref Shininess, 1.0f, 200.0f);
 
             ImGui.Separator();
-            ImGui.Text("Háttérfény / Háttérszín (R, G, B):");
-            ImGui.SliderFloat("Háttér R", ref BackgroundColor.X, 0.0f, 1.0f);
-            ImGui.SliderFloat("Háttér G", ref BackgroundColor.Y, 0.0f, 1.0f);
-            ImGui.SliderFloat("Háttér B", ref BackgroundColor.Z, 0.0f, 1.0f);
+            ImGui.Text("Hatterfeny / Hatterszin (R, G, B):");
+            ImGui.SliderFloat("Hatter R", ref BackgroundColor.X, 0.0f, 1.0f);
+            ImGui.SliderFloat("Hatter G", ref BackgroundColor.Y, 0.0f, 1.0f);
+            ImGui.SliderFloat("Hatter B", ref BackgroundColor.Z, 0.0f, 1.0f);
 
             ImGui.Separator();
-            ImGui.Text("Központi kocka felső oldalának színe:");
-            if (ImGui.ColorEdit4("Felső lap színe", ref CenterCubeTopFaceColor))
+            ImGui.Text("Kozponti kocka felso oldalanak szine:");
+            if (ImGui.ColorEdit4("Felso lap szine", ref CenterCubeTopFaceColor))
             {
                 glCubeCentered.UpdateFace1Color(new float[]
                 {
