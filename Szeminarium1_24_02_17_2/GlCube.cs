@@ -30,35 +30,35 @@ namespace Szeminarium1_24_02_17_2
             {
                 // counter clockwise is front facing
                 float[] vertexArray = new float[] {
-                    -0.5f, 0.5f, 0.5f,
-                    0.5f, 0.5f, 0.5f,
-                    0.5f, 0.5f, -0.5f,
-                    -0.5f, 0.5f, -0.5f,
+                    -0.5f,  0.5f,  0.5f,  0f,  1f,  0f,
+                     0.5f,  0.5f,  0.5f,  0f,  1f,  0f,
+                     0.5f,  0.5f, -0.5f,  0f,  1f,  0f,
+                    -0.5f,  0.5f, -0.5f,  0f,  1f,  0f,
 
-                    -0.5f, 0.5f, 0.5f,
-                    -0.5f, -0.5f, 0.5f,
-                    0.5f, -0.5f, 0.5f,
-                    0.5f, 0.5f, 0.5f,
+                    -0.5f,  0.5f,  0.5f,  0f,  0f,  1f,
+                    -0.5f, -0.5f,  0.5f,  0f,  0f,  1f,
+                     0.5f, -0.5f,  0.5f,  0f,  0f,  1f,
+                     0.5f,  0.5f,  0.5f,  0f,  0f,  1f,
 
-                    -0.5f, 0.5f, 0.5f,
-                    -0.5f, 0.5f, -0.5f,
-                    -0.5f, -0.5f, -0.5f,
-                    -0.5f, -0.5f, 0.5f,
+                    -0.5f,  0.5f,  0.5f, -1f,  0f,  0f,
+                    -0.5f,  0.5f, -0.5f, -1f,  0f,  0f,
+                    -0.5f, -0.5f, -0.5f, -1f,  0f,  0f,
+                    -0.5f, -0.5f,  0.5f, -1f,  0f,  0f,
 
-                    -0.5f, -0.5f, 0.5f,
-                    0.5f, -0.5f, 0.5f,
-                    0.5f, -0.5f, -0.5f,
-                    -0.5f, -0.5f, -0.5f,
+                    -0.5f, -0.5f,  0.5f,  0f, -1f,  0f,
+                     0.5f, -0.5f,  0.5f,  0f, -1f,  0f,
+                     0.5f, -0.5f, -0.5f,  0f, -1f,  0f,
+                    -0.5f, -0.5f, -0.5f,  0f, -1f,  0f,
 
-                    0.5f, 0.5f, -0.5f,
-                    -0.5f, 0.5f, -0.5f,
-                    -0.5f, -0.5f, -0.5f,
-                    0.5f, -0.5f, -0.5f,
+                    0.5f,  0.5f, -0.5f,  0f,  0f, -1f,
+                    -0.5f,  0.5f, -0.5f,  0f,  0f, -1f,
+                    -0.5f, -0.5f, -0.5f,  0f,  0f, -1f,
+                     0.5f, -0.5f, -0.5f,  0f,  0f, -1f,
 
-                    0.5f, 0.5f, 0.5f,
-                    0.5f, 0.5f, -0.5f,
-                    0.5f, -0.5f, -0.5f,
-                    0.5f, -0.5f, 0.5f,
+                    0.5f,  0.5f,  0.5f,  1f,  0f,  0f,
+                    0.5f,  0.5f, -0.5f,  1f,  0f,  0f,
+                    0.5f, -0.5f, -0.5f,  1f,  0f,  0f,
+                    0.5f, -0.5f,  0.5f,  1f,  0f,  0f,
                 };
 
                 uint[] indexArray = new uint[] {
@@ -95,9 +95,16 @@ namespace Szeminarium1_24_02_17_2
             uint vao = Gl.GenVertexArray();
             Gl.BindVertexArray(vao);
 
+            uint offsetPos = 0;
+            uint offsetNormal = 3 * sizeof(float);
+            uint vertexSize = 6 * sizeof(float);
+
             Gl.BindBuffer(GLEnum.ArrayBuffer, vertices);
-            Gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 0, null);
+            Gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, vertexSize, (void*)offsetPos);
             Gl.EnableVertexAttribArray(0);
+
+            Gl.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, vertexSize, (void*)offsetNormal);
+            Gl.EnableVertexAttribArray(2);
 
             List<float> colorsList = new List<float>();
             colorsList.AddRange(face1Color);
