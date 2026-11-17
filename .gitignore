@@ -1,0 +1,21 @@
+## Visual Studio és IDE fájlok
+.vs/
+.vscode/
+.idea/
+
+## .NET fordítási kimenetek
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Felhasználói beállítások és ideiglenes fájlok
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+
+## Operációs rendszer fájljai
+.DS_Store
+Thumbs.db
