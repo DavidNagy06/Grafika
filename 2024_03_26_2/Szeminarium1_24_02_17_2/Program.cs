@@ -9,11 +9,11 @@ namespace Szeminarium1_24_02_17_2
 {
     internal static class Program
     {
-        private static GlBoard boardFlatNormals;
-        private static GlBoard boardTiltedNormals;
+        //private static GlBoard boardFlatNormals;
+        //private static GlBoard boardTiltedNormals;
         private static CameraDescriptor cameraDescriptor = new();
 
-        //private static CubeArrangementModel cubeArrangementModel = new();
+        private static CubeArrangementModel cubeArrangementModel = new();
 
         private static IWindow window;
 
@@ -25,11 +25,18 @@ namespace Szeminarium1_24_02_17_2
 
         private static uint program;
 
-        //private static GlCube glCubeCentered;
+        private static GlCube glCubeCentered;
 
-        //private static GlCube glCubeRotating;
+        private static GlCube glCubeRotating;
 
-        private static float Shininess = 50;
+        private static System.Numerics.Vector3 AmbientStrength = new(0.24725f, 0.1995f, 0.0745f);
+        private static System.Numerics.Vector3 DiffuseStrength = new(0.75164f, 0.60648f, 0.22648f);
+        private static System.Numerics.Vector3 SpecularStrength = new(0.628281f, 0.555802f, 0.366065f);
+        private static float Shininess = 51.2f;
+
+        private static System.Numerics.Vector3 BackgroundColor = new(0.15f, 0.15f, 0.18f);
+
+        private static System.Numerics.Vector4 CenterCubeTopFaceColor = new(1.0f, 1.0f, 1.0f, 1.0f);
 
         private const string ModelMatrixVariableName = "uModel";
         private const string NormalMatrixVariableName = "uNormal";
@@ -64,6 +71,9 @@ namespace Szeminarium1_24_02_17_2
         private const string LightPositionVariableName = "lightPos";
         private const string ViewPosVariableName = "viewPos";
         private const string ShininessVariableName = "shininess";
+        private const string AmbientStrengthVariableName = "ambientStrength";
+        private const string DiffuseStrengthVariableName = "diffuseStrength";
+        private const string SpecularStrengthVariableName = "specularStrength";
 
         private static readonly string FragmentShaderSource = @"
         #version 330 core
@@ -73,6 +83,10 @@ namespace Szeminarium1_24_02_17_2
         uniform vec3 viewPos;
         uniform float shininess;
 
+        uniform vec3 ambientStrength;
+        uniform vec3 diffuseStrength;
+        uniform vec3 specularStrength;
+
         out vec4 FragColor;
 
 		in vec4 outCol;
@@ -81,16 +95,13 @@ namespace Szeminarium1_24_02_17_2
 
         void main()
         {
-            float ambientStrength = 0.2;
             vec3 ambient = ambientStrength * lightColor;
 
-            float diffuseStrength = 0.3;
             vec3 norm = normalize(outNormal);
             vec3 lightDir = normalize(lightPos - outWorldPosition);
             float diff = max(dot(norm, lightDir), 0.0);
             vec3 diffuse = diff * lightColor * diffuseStrength;
 
-            float specularStrength = 0.5;
             vec3 viewDir = normalize(viewPos - outWorldPosition);
             vec3 reflectDir = reflect(-lightDir, norm);
             float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
@@ -149,7 +160,7 @@ namespace Szeminarium1_24_02_17_2
 
             LinkProgram();
 
-            Gl.Disable(EnableCap.CullFace);
+            Gl.Enable(EnableCap.CullFace);
 
             Gl.Enable(EnableCap.DepthTest);
             Gl.DepthFunc(DepthFunction.Lequal);
@@ -210,9 +221,9 @@ namespace Szeminarium1_24_02_17_2
                 case Key.D:
                     cameraDescriptor.DecreaseZXAngle();
                     break;
-                //case Key.Space:
-                //    cubeArrangementModel.AnimationEnabeld = !cubeArrangementModel.AnimationEnabeld;
-                //    break;
+                case Key.Space:
+                    cubeArrangementModel.AnimationEnabeld = !cubeArrangementModel.AnimationEnabeld;
+                    break;
             }
         }
 
@@ -222,7 +233,7 @@ namespace Szeminarium1_24_02_17_2
             // multithreaded
             // make sure it is threadsafe
             // NO GL calls
-            //cubeArrangementModel.AdvanceTime(deltaTime);
+            cubeArrangementModel.AdvanceTime(deltaTime);
 
             controller.Update((float)deltaTime);
         }
@@ -232,8 +243,8 @@ namespace Szeminarium1_24_02_17_2
             //Console.WriteLine($"Render after {deltaTime} [s].");
 
             // GL here
-            Gl.Clear(ClearBufferMask.ColorBufferBit);
-            Gl.Clear(ClearBufferMask.DepthBufferBit);
+            Gl.ClearColor(BackgroundColor.X, BackgroundColor.Y, BackgroundColor.Z, 1.0f);
+            Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
 
             Gl.UseProgram(program);
@@ -244,18 +255,12 @@ namespace Szeminarium1_24_02_17_2
             SetLightColor();
             SetLightPosition();
             SetViewerPosition();
-            SetShininess();
+            SetMaterialUniforms();
 
-            DrawTub(boardFlatNormals, 1.1f);
+            DrawPulsingCenterCube();
+            DrawRevolvingCube();
 
-            DrawTub(boardTiltedNormals, -1.1f);
-
-            //ImGuiNET.ImGui.ShowDemoWindow();
-            ImGuiNET.ImGui.Begin("Lighting properties",
-                ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar);
-            ImGuiNET.ImGui.SliderFloat("Shininess", ref Shininess, 1, 200);
-            ImGuiNET.ImGui.End();
-
+            RenderImGui();
 
             controller.Render();
         }
@@ -269,7 +274,7 @@ namespace Szeminarium1_24_02_17_2
                 throw new Exception($"{LightColorVariableName} uniform not found on shader.");
             }
 
-            Gl.Uniform3(location, 1f, 1f, 1f);
+            Gl.Uniform3(location, 1.5f, 3f, 2f);
             CheckError();
         }
 
@@ -312,62 +317,124 @@ namespace Szeminarium1_24_02_17_2
             CheckError();
         }
 
-        //private static unsafe void DrawRevolvingCube()
-        //{
-        //    // set material uniform to metal
-
-        //    Matrix4X4<float> diamondScale = Matrix4X4.CreateScale(0.25f);
-        //    Matrix4X4<float> rotx = Matrix4X4.CreateRotationX((float)Math.PI / 4f);
-        //    Matrix4X4<float> rotz = Matrix4X4.CreateRotationZ((float)Math.PI / 4f);
-        //    Matrix4X4<float> rotLocY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleOwnRevolution);
-        //    Matrix4X4<float> trans = Matrix4X4.CreateTranslation(1f, 1f, 0f);
-        //    Matrix4X4<float> rotGlobY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleRevolutionOnGlobalY);
-        //    Matrix4X4<float> modelMatrix = diamondScale * rotx * rotz * rotLocY * trans * rotGlobY;
-
-        //    SetModelMatrix(modelMatrix);
-        //    Gl.BindVertexArray(glCubeRotating.Vao);
-        //    Gl.DrawElements(GLEnum.Triangles, glCubeRotating.IndexArrayLength, GLEnum.UnsignedInt, null);
-        //    Gl.BindVertexArray(0);
-        //}
-
-        //private static unsafe void DrawPulsingCenterCube()
-        //{
-        //    // set material uniform to rubber
-
-        //    var modelMatrixForCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
-        //    SetModelMatrix(modelMatrixForCenterCube);
-        //    Gl.BindVertexArray(glCubeCentered.Vao);
-        //    Gl.DrawElements(GLEnum.Triangles, glCubeCentered.IndexArrayLength, GLEnum.UnsignedInt, null);
-        //    Gl.BindVertexArray(0);
-        //}
-
-        private static unsafe void DrawTub(GlBoard board, float yOffset)
+        private static unsafe void DrawRevolvingCube()
         {
-            int boardCount = 18;
-            float boardWidth = 1.0f;
+            // set material uniform to metal
 
-            double stepAngleRad = 2.0 * Math.PI / boardCount; // 20 fok
-            double halfAngleRad = stepAngleRad / 2.0;         // 10 fok
+            Matrix4X4<float> diamondScale = Matrix4X4.CreateScale(0.25f);
+            Matrix4X4<float> rotx = Matrix4X4.CreateRotationX((float)Math.PI / 4f);
+            Matrix4X4<float> rotz = Matrix4X4.CreateRotationZ((float)Math.PI / 4f);
+            Matrix4X4<float> rotLocY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleOwnRevolution);
+            Matrix4X4<float> trans = Matrix4X4.CreateTranslation(1f, 1f, 0f);
+            Matrix4X4<float> rotGlobY = Matrix4X4.CreateRotationY((float)cubeArrangementModel.DiamondCubeAngleRevolutionOnGlobalY);
+            Matrix4X4<float> modelMatrix = diamondScale * rotx * rotz * rotLocY * trans * rotGlobY;
 
-            // Ideális Z távolság számítása derékszögű háromszögből:
-            float radiusZ = (float)((boardWidth / 2.0) / Math.Tan(halfAngleRad));
+            SetModelMatrix(modelMatrix);
+            Gl.BindVertexArray(glCubeRotating.Vao);
+            Gl.DrawElements(GLEnum.Triangles, glCubeRotating.IndexArrayLength, GLEnum.UnsignedInt, null);
+            Gl.BindVertexArray(0);
+        }
 
-            Gl.BindVertexArray(board.Vao);
+        private static unsafe void DrawPulsingCenterCube()
+        {
+            // set material uniform to rubber
 
-            for (int i = 0; i < boardCount; i++)
+            var modelMatrixForCenterCube = Matrix4X4.CreateScale((float)cubeArrangementModel.CenterCubeScale);
+            SetModelMatrix(modelMatrixForCenterCube);
+            Gl.BindVertexArray(glCubeCentered.Vao);
+            Gl.DrawElements(GLEnum.Triangles, glCubeCentered.IndexArrayLength, GLEnum.UnsignedInt, null);
+            Gl.BindVertexArray(0);
+        }
+
+        //private static unsafe void DrawTub(GlBoard board, float yOffset)
+        //{
+        //    int boardCount = 18;
+        //    float boardWidth = 1.0f;
+
+        //    double stepAngleRad = 2.0 * Math.PI / boardCount; // 20 fok
+        //    double halfAngleRad = stepAngleRad / 2.0;         // 10 fok
+
+        //    // Ideális Z távolság számítása derékszögű háromszögből:
+        //    float radiusZ = (float)((boardWidth / 2.0) / Math.Tan(halfAngleRad));
+
+        //    Gl.BindVertexArray(board.Vao);
+
+        //    for (int i = 0; i < boardCount; i++)
+        //    {
+        //        float currentAngleY = (float)(i * stepAngleRad);
+
+        //        Matrix4X4<float> translation = Matrix4X4.CreateTranslation(0.0f, yOffset, radiusZ);
+        //        Matrix4X4<float> rotationY = Matrix4X4.CreateRotationY(currentAngleY);
+
+        //        Matrix4X4<float> modelMatrix = translation * rotationY;
+        //        SetModelMatrix(modelMatrix);
+
+        //        Gl.DrawElements(GLEnum.Triangles, board.IndexArrayLength, GLEnum.UnsignedInt, null);
+        //    }
+
+        //    Gl.BindVertexArray(0);
+        //}
+
+        private static void RenderImGui()
+        {
+            ImGui.Begin("Anyag és Világítás", ImGuiWindowFlags.AlwaysAutoResize);
+
+            ImGui.Text("Ambient Strength (R, G, B):");
+            ImGui.SliderFloat("Ambient R", ref AmbientStrength.X, 0.0f, 1.0f);
+            ImGui.SliderFloat("Ambient G", ref AmbientStrength.Y, 0.0f, 1.0f);
+            ImGui.SliderFloat("Ambient B", ref AmbientStrength.Z, 0.0f, 1.0f);
+
+            ImGui.Separator();
+            ImGui.Text("Diffuse Strength (R, G, B):");
+            ImGui.SliderFloat("Diffuse R", ref DiffuseStrength.X, 0.0f, 1.0f);
+            ImGui.SliderFloat("Diffuse G", ref DiffuseStrength.Y, 0.0f, 1.0f);
+            ImGui.SliderFloat("Diffuse B", ref DiffuseStrength.Z, 0.0f, 1.0f);
+
+            ImGui.Separator();
+            ImGui.Text("Specular Strength (R, G, B):");
+            ImGui.SliderFloat("Specular R", ref SpecularStrength.X, 0.0f, 1.0f);
+            ImGui.SliderFloat("Specular G", ref SpecularStrength.Y, 0.0f, 1.0f);
+            ImGui.SliderFloat("Specular B", ref SpecularStrength.Z, 0.0f, 1.0f);
+
+            ImGui.Separator();
+            ImGui.SliderFloat("Shininess", ref Shininess, 1.0f, 200.0f);
+
+            ImGui.Separator();
+            ImGui.Text("Háttérfény / Háttérszín (R, G, B):");
+            ImGui.SliderFloat("Háttér R", ref BackgroundColor.X, 0.0f, 1.0f);
+            ImGui.SliderFloat("Háttér G", ref BackgroundColor.Y, 0.0f, 1.0f);
+            ImGui.SliderFloat("Háttér B", ref BackgroundColor.Z, 0.0f, 1.0f);
+
+            ImGui.Separator();
+            ImGui.Text("Központi kocka felső oldalának színe:");
+            if (ImGui.ColorEdit4("Felső lap színe", ref CenterCubeTopFaceColor))
             {
-                float currentAngleY = (float)(i * stepAngleRad);
-
-                Matrix4X4<float> translation = Matrix4X4.CreateTranslation(0.0f, yOffset, radiusZ);
-                Matrix4X4<float> rotationY = Matrix4X4.CreateRotationY(currentAngleY);
-
-                Matrix4X4<float> modelMatrix = translation * rotationY;
-                SetModelMatrix(modelMatrix);
-
-                Gl.DrawElements(GLEnum.Triangles, board.IndexArrayLength, GLEnum.UnsignedInt, null);
+                glCubeCentered.UpdateFace1Color(new float[]
+                {
+            CenterCubeTopFaceColor.X,
+            CenterCubeTopFaceColor.Y,
+            CenterCubeTopFaceColor.Z,
+            CenterCubeTopFaceColor.W
+                });
             }
 
-            Gl.BindVertexArray(0);
+            ImGui.End();
+        }
+
+        private static unsafe void SetMaterialUniforms()
+        {
+            int ambLoc = Gl.GetUniformLocation(program, AmbientStrengthVariableName);
+            Gl.Uniform3(ambLoc, AmbientStrength.X, AmbientStrength.Y, AmbientStrength.Z);
+
+            int diffLoc = Gl.GetUniformLocation(program, DiffuseStrengthVariableName);
+            Gl.Uniform3(diffLoc, DiffuseStrength.X, DiffuseStrength.Y, DiffuseStrength.Z);
+
+            int specLoc = Gl.GetUniformLocation(program, SpecularStrengthVariableName);
+            Gl.Uniform3(specLoc, SpecularStrength.X, SpecularStrength.Y, SpecularStrength.Z);
+
+            int shinLoc = Gl.GetUniformLocation(program, ShininessVariableName);
+            Gl.Uniform1(shinLoc, Shininess);
+            CheckError();
         }
 
         private static unsafe void SetModelMatrix(Matrix4X4<float> modelMatrix)
@@ -401,18 +468,19 @@ namespace Szeminarium1_24_02_17_2
 
         private static unsafe void SetUpObjects()
         {
+            float[] whiteFace = [1.0f, 1.0f, 1.0f, 1.0f];
+            float[] topFace = [CenterCubeTopFaceColor.X, CenterCubeTopFaceColor.Y, CenterCubeTopFaceColor.Z, CenterCubeTopFaceColor.W];
 
-            float[] woodColor = [0.72f, 0.45f, 0.22f, 1.0f];
-            boardFlatNormals = GlBoard.CreateBoard(Gl, woodColor, tiltedNormals: false);
-            boardTiltedNormals = GlBoard.CreateBoard(Gl, woodColor, tiltedNormals: true);
+            glCubeCentered = GlCube.CreateCubeWithFaceColors(Gl, topFace, whiteFace, whiteFace, whiteFace, whiteFace, whiteFace);
+            glCubeRotating = GlCube.CreateCubeWithFaceColors(Gl, whiteFace, whiteFace, whiteFace, whiteFace, whiteFace, whiteFace);
         }
 
         
 
         private static void Window_Closing()
         {
-            boardFlatNormals.Release();
-            boardTiltedNormals.Release();
+            glCubeCentered.ReleaseGlCube();
+            glCubeRotating.ReleaseGlCube();
         }
 
         private static unsafe void SetProjectionMatrix()

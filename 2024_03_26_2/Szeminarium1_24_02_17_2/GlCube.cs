@@ -157,6 +157,24 @@ namespace Szeminarium1_24_02_17_2
             return new GlCube(vao, vertices, colors, indices, indexArrayLength, Gl);
         }
 
+        // Ezt a metódust add hozzá a GlCube.cs osztályhoz:
+        internal unsafe void UpdateFace1Color(float[] newFaceColor)
+        {
+            // A felső lap (face1) az első 4 csúcspontot jelenti (4 csúcs * 4 float = 16 float)
+            float[] updatedVerticesColors = new float[16];
+            for (int i = 0; i < 4; i++)
+            {
+                updatedVerticesColors[i * 4 + 0] = newFaceColor[0];
+                updatedVerticesColors[i * 4 + 1] = newFaceColor[1];
+                updatedVerticesColors[i * 4 + 2] = newFaceColor[2];
+                updatedVerticesColors[i * 4 + 3] = newFaceColor[3];
+            }
+
+            Gl.BindBuffer(GLEnum.ArrayBuffer, Colors);
+            Gl.BufferSubData(GLEnum.ArrayBuffer, 0, (ReadOnlySpan<float>)updatedVerticesColors.AsSpan());
+            Gl.BindBuffer(GLEnum.ArrayBuffer, 0);
+        }
+
         internal void ReleaseGlCube()
         {
             // always unbound the vertex buffer first, so no halfway results are displayed by accident
